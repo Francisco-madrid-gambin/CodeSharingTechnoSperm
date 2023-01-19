@@ -1,0 +1,140 @@
+---
+title: "Integratio Tecniosperm"
+author: "Francisco Madrid"
+date: '`r format(Sys.time(), "%B %d, %Y,%H:%M")`'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(mixOmics)
+library(tidyr)
+library(ggraph)
+library(igraph)
+library(tidyverse)
+library(RColorBrewer)
+
+
+# library(showtext)
+# showtext_auto()
+# font_add_google("Roboto", "Roboto")
+
+# load("C:/Users/Biosignal/Documents/IMIM/Tecniosperm2/Integration.RData")
+```
+
+
+
+## Data loading
+
+```{r}
+sperm <- read.csv("C:/Users/Biosignal/Documents/IMIM/Tecniosperm/DATA_final_FMG.csv")
+
+data <- sperm[,2:22]
+meta <- sperm[,c(1,23:length(sperm))]
+```
+
+
+## Imputing data (zeros)
+
+```{r}
+xdata <- data
+has.neg <- apply(xdata, 1, function(row) any(row < 0))
+# which(has.neg)
+message("there are ", length(which(has.neg)), " rows with negative values")
+
+## Detected abnormal 0 values
+xdata[xdata == 0] <- NA
+
+for(i in 1:ncol(xdata)){
+  xdata[is.na(xdata[,i]), i] <- min(xdata[,i], na.rm = TRUE)/2}
+
+# message("there are ", sum(is.na(xdata)), " NAs")
+# has.neg <- apply(xdata, 1, function(row) any(row < 0))
+# message("there are ", length(which(has.neg)), " rows with negative values")
+
+data <- xdata
+sperm[,2:22] <- data
+rm(xdata)
+```
+
+
+```{r}
+data <- data %>% dplyr::mutate(Cit_LA = Citricacid/Lacticacid)
+
+data <- data %>% dplyr::select(
+  -Hippuricacid,
+  -Phenylalanine,
+  -Tryptophan
+)
+```
+
+
+## Normalizacion
+
+```{r}
+normalize<-function(data,vars=colnames(data),group_var,method){
+  subdata<-data[,vars]
+  subdata<-switch(method,
+                  auto=apply(subdata,2,function(x) (x-mean(x,na.rm=T))/sd(x,na.rm=T)),        
+                  level=apply(subdata,2,function(x) (x-mean(x,na.rm=T))/mean(x,na.rm=T)),
+                  log=apply(subdata,2,function(x) (log10(x+1)-mean(log10(x+1),na.rm=T))/sd(log10(x+1),na.rm=T)),
+                  vast=apply(subdata,2,function(x) ((x-mean(x,na.rm=T))/sd(x,na.rm=T))*(mean(x,na.rm=T)/sd(x,na.rm=T))),         
+                  logpareto=apply(subdata,2,function(x) (log10(x+1)-mean(log10(x+1),na.rm=T))/sqrt(sd(log10(x+1),na.rm=T))),
+                  pareto=apply(subdata,2,function(x) (x-mean(x,na.rm=T))/sqrt(sd(x),na.rm=T))
+  )
+  data[,vars]<-subdata
+  return(data)
+}
+
+
+dataNorm <- normalize(data, method = "logpareto")
+```
+
+
+
+```{r}
+calidad <- c("Id", "DIL_T0_TOTAL", "DIL_T0_PROGESSIUS", "PCT_MORF_NORMAL", "DIL_T0_PCT_VIABLE")
+funcion_es <- c("DIL_ RATIO_PCT_LIVE_PNAneg", "DIL_ RATIO_MA_LIVE_F3pos", "DIL_ RATIO_PCT_JC1_HMMP")
+
+meta_calidad <- meta[, calidad]
+
+pca_calidad <- mixOmics::pca((meta_calidad[,-1]), ncomp = 2,
+                     center = TRUE, 
+                     scale = TRUE)
+
+biplot(pca_calidad)
+
+pca_calidad$loadings
+```
+
+
+```{r}
+funcion_es <- c("DIL_ RATIO_PCT_LIVE_PNAneg", "DIL_ RATIO_MA_LIVE_F3pos", "DIL_ RATIO_PCT_JC1_HMMP")
+
+meta_funcion <- meta[, funcion]
+
+pca_funcion <- mixOmics::pca((meta_funcion[,-1]), ncomp = 2,
+                     center = TRUE, 
+                     scale = TRUE)
+
+biplot(pca_funcion)
+
+pca_funcion$loadings
+```
+
+
+```{r}
+fecundante <- c("Id", "Fertilization_rate_D2", "D6_PCT_embrios_total", "D6_PCT_Morula_Total", "D6_PCT_Blastos_Total", "D6_PCT_Hatched_Total", "D6_PCT_MorulaBlastosHatched_Total", "D6_Taxa_desenvolupamentnum.Morblashatchentrenum.2cel8cel.Mesgran", "D6_Taxa_desenvolupament_dia26")
+
+meta_fecundante <- meta[, fecundante]
+
+pca_fecundante <- mixOmics::pca((meta_fecundante[,-1]), ncomp = 2,
+                     center = TRUE, 
+                     scale = TRUE)
+
+biplot(pca_fecundante)
+pca_fecundante$loadings
+```
+
+
