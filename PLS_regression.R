@@ -13,6 +13,7 @@ library(doParallel)
 ## Data loading
 sperm <- read.csv("dataset_journal.csv", check.names = FALSE)
 metadata <- sperm[,2:16]
+colnames(metadata) <- sperm[,1]
 metabolomics <- sperm[,17:length(sperm)]
 
 
@@ -45,7 +46,12 @@ pca_quality$loadings # For supplementary Table 1
 ## Sperm Function vector
 function. <- c("Intracellular calcium levels", "Sperm mitochondrial potential", "Viable sperm w/ intact acrosome")
 meta_function <- metadata[, function.]
-pca_function <- mixOmics::pca((meta_function), ncomp = 2, center = TRUE, scale = TRUE)
+meta_function <- meta_function[meta_function$Id != "FIV 3 10",] ## Removing sample with outlier
+
+
+
+
+pca_function <- mixOmics::pca((meta_function), ncomp = 1, center = TRUE, scale = TRUE)
 pca_function$loadings
 
 ## IVF outcomes vector
@@ -75,10 +81,11 @@ plotMV(model_quality) ## For Figure 1
 sig_LR_PLS_Quality <- MUVR::getVIP(model_quality, model = "max")
 
 ## PLS Sperm Function
+metabolomicsNormReduced <- metabolomicsNorm[metabolomicsNorm$Id != "FIV 3 10",] ## Removing sample with outlier
 scores.function <- pca_function[["variates"]][["X"]]
 cl <- parallel::makeCluster(parallel::detectCores()-1)       
 doParallel::registerDoParallel(cl)
-model_function <- MUVR::MUVR(X = (metabolomicsNorm), 
+model_function <- MUVR::MUVR(X = (metabolomicsNormReduced), 
                             Y = scores.function[,"PC1"], 
                             ML = F, 
                             method ='PLS',
