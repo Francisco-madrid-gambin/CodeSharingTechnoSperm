@@ -12,12 +12,7 @@ metabolomics <- sperm[,17:length(sperm)]
 normalize<-function(data,vars=colnames(data),group_var,method){
   subdata<-data[,vars]
   subdata<-switch(method,
-                  auto=apply(subdata,2,function(x) (x-mean(x,na.rm=T))/sd(x,na.rm=T)),        
-                  level=apply(subdata,2,function(x) (x-mean(x,na.rm=T))/mean(x,na.rm=T)),
-                  log=apply(subdata,2,function(x) (log10(x+1)-mean(log10(x+1),na.rm=T))/sd(log10(x+1),na.rm=T)),
-                  vast=apply(subdata,2,function(x) ((x-mean(x,na.rm=T))/sd(x,na.rm=T))*(mean(x,na.rm=T)/sd(x,na.rm=T))),         
                   logpareto=apply(subdata,2,function(x) (log10(x+1)-mean(log10(x+1),na.rm=T))/sqrt(sd(log10(x+1),na.rm=T))),
-                  pareto=apply(subdata,2,function(x) (x-mean(x,na.rm=T))/sqrt(sd(x),na.rm=T))
   )
   data[,vars]<-subdata
   return(data)
